@@ -5,7 +5,6 @@ import java.util.concurrent.BlockingQueue;
 
 public class UserData {
 	private String ID = null;
-	private int connectedUserCount;
 	private BlockingQueue<String> from1to2Queue = null;
 	private BlockingQueue<String> from2to1Queue = null;
 	private boolean isfrom1to2QueueInUse = false;
@@ -30,17 +29,8 @@ public class UserData {
 	public UserData(String iD) {
 		super();
 		ID = iD;
-		connectedUserCount = 0;
 		from1to2Queue = new ArrayBlockingQueue<String>(10);
 		from2to1Queue = new ArrayBlockingQueue<String>(10);
-	}
-
-	public synchronized int getConnectedUserCount() {
-		return connectedUserCount;
-	}
-
-	public synchronized void setConnectedUserCount(int connectedUserCount) {
-		this.connectedUserCount = connectedUserCount;
 	}
 
 	public synchronized String getID() {

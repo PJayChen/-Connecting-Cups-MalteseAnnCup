@@ -81,7 +81,6 @@ public class WorkerRunnable implements Runnable{
 	        	    		if (ThreadPooledServer.DEBUG) System.out.println("Create new userData for " + userID);
 	        	    		userData = new UserData(userID);
 	        	    		userList.add(userData);
-	        	    		if (ThreadPooledServer.DEBUG) System.out.println("Connected user count: " + userData.getConnectedUserCount());
 	        	    	}
 	            		
 	        	    	//determine which queue should be use
@@ -94,7 +93,7 @@ public class WorkerRunnable implements Runnable{
 	        	    		writeQueue = userData.getfrom2to1Queue();
 	        	    		readQueue = userData.getfrom1to2Queue();
 	        	    	} else {
-	        	    		//all queue is in use.
+	        	    		//all queue of specific userID are in use.
 	        	    		output.writeUTF("two user connected.");
 	                		output.flush();
 	        	    		writeQueue = null;
