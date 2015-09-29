@@ -10,7 +10,12 @@ import java.util.concurrent.BlockingQueue;
 
 
 public class WorkerRunnable implements Runnable{
-
+	
+	private static final int GETID = 0;
+	private static final int GRANT = 1;
+	private static final int DATABYPASS = 2;
+	private int cur_state = 0;
+	
 	//Socket related members
     protected Socket clientSocket = null;
     private DataInputStream input = null;
@@ -27,6 +32,8 @@ public class WorkerRunnable implements Runnable{
     private String userID = "PJay";
     private boolean userExisted = false;
     
+    private String inMsg;
+    String[] msgArray = new String[3];
     
     public WorkerRunnable(Socket clientSocket) {
         this.clientSocket = clientSocket;
@@ -34,83 +41,106 @@ public class WorkerRunnable implements Runnable{
 
     public void run() {
     	long start_time = System.currentTimeMillis();
+    	if (ThreadPooledServer.DEBUG) System.out.println(clientSocket.getRemoteSocketAddress() + " connected.");
+    	
     	try {
     		//get in/output stream
     		input = new DataInputStream( this.clientSocket.getInputStream() );
             output = new DataOutputStream( this.clientSocket.getOutputStream() );
             
-            String inMsg;
             
-	    	//traversal the user list to check the connected userID is existed or not.    	
-	    	for (UserData ud : userList) {
-	    		if (ud.getID().equals(userID)) {
-	    			if (ThreadPooledServer.DEBUG) System.out.println(userID + " existed");
-	    			userExisted = true;
-	    			userData = ud;
-	    			break; 
-	    		}
-	    	}
-	    	
-	    	//if the incoming user is never seen before, create new userData
-	    	if (userExisted == false) {
-	    		if (ThreadPooledServer.DEBUG) System.out.println("Create new userData for " + userID);
-	    		userData = new UserData(userID);
-	    		userList.add(userData);
-	    		if (ThreadPooledServer.DEBUG) System.out.println("Connected user count: " + userData.getConnectedUserCount());
-	    	}
-    		
-	    	//determine which queue should be use
-	    	if (userData.isIsfrom1to2QueueInUse() != true) {
-	    		userData.setIsfrom1to2QueueInUse(true);
-	    		writeQueue = userData.getfrom1to2Queue();
-	    		readQueue = userData.getfrom2to1Queue();
-	    	} else if (userData.isIsfrom2to1QueueInUse() != true){
-	    		userData.setIsfrom2to1QueueInUse(true);
-	    		writeQueue = userData.getfrom2to1Queue();
-	    		readQueue = userData.getfrom1to2Queue();
-	    	} else {
-	    		//all queue is in use.
-	    		output.writeUTF("two user connected.");
-        		output.flush();
-	    		writeQueue = null;
-	    		readQueue = null;
-	    		if (output != null) output.close();
-				if (input != null) input.close();
-				
-				output.writeUTF("trigger exception to terminate this conncetion and thread");
-        		output.flush();
-	    	}
-    	    	    	                       
-            if (ThreadPooledServer.DEBUG) System.out.println(clientSocket.getRemoteSocketAddress() + " connected.");
-                                      
+            //Super loop
             while(true) {
-            	//------------------- do works --------------------            	
-            	
-            	//pass user_x's data to user_y
-        		if (input.available() > 0) {
-        			inMsg = input.readUTF();
-        			if (writeQueue.offer(inMsg) == true) {
-        				if (ThreadPooledServer.DEBUG) System.out.printf("Received: \"%s\" from %s\n", inMsg, clientSocket.getRemoteSocketAddress());
-        			} else {
-    					if (ThreadPooledServer.DEBUG) System.out.printf("writeQueue is full\n");
-        			}
-        		} else {
-        			//No more data received from client,
-        			//test whether the client is disconnected or not
-        			output.writeUTF("W, 0, Are you alive?");
-            		output.flush();
-            		Thread.sleep(1000);
-        		}
-        		
-        		//take data from user_y's then send to user_x         		
-        		if ( !readQueue.isEmpty()) {
-        			String msgFromClient2 = readQueue.poll();
-        			output.writeUTF(msgFromClient2);
-            		output.flush();
-            		if (ThreadPooledServer.DEBUG) System.out.printf("Take data \"%s\" from readQueue, send to  %s\n", msgFromClient2, clientSocket.getRemoteSocketAddress());
-        		}            	
-                Thread.sleep(250);
-            } //End of while(true)
+	            switch (cur_state) {
+	            	case GETID:
+	            		inMsg = input.readUTF();
+	                	if (ThreadPooledServer.DEBUG) System.out.println(": " + inMsg);
+	                    msgArray = inMsg.split(", ");
+	                    if (msgArray != null && msgArray[0].equals("N") && msgArray[1].equals("0")) {
+	                    	userID = new String(msgArray[2].toString());
+	                    	if (ThreadPooledServer.DEBUG) System.out.println("User ID: " + userID);
+	                    	cur_state = GRANT;
+	                    }
+	            		break;
+	            	case GRANT:
+	            		output.writeUTF("N, 1, ok");
+	            		output.flush();
+	            		
+	            		//traversal the user list to check the connected userID is existed or not.    	
+	        	    	for (UserData ud : userList) {
+	        	    		if (ud.getID().equals(userID)) {
+	        	    			if (ThreadPooledServer.DEBUG) System.out.println(userID + " existed");
+	        	    			userExisted = true;
+	        	    			userData = ud;
+	        	    			break; 
+	        	    		}
+	        	    	}
+	        	    	
+	        	    	//if the incoming user is never seen before, create new userData
+	        	    	if (userExisted == false) {
+	        	    		if (ThreadPooledServer.DEBUG) System.out.println("Create new userData for " + userID);
+	        	    		userData = new UserData(userID);
+	        	    		userList.add(userData);
+	        	    		if (ThreadPooledServer.DEBUG) System.out.println("Connected user count: " + userData.getConnectedUserCount());
+	        	    	}
+	            		
+	        	    	//determine which queue should be use
+	        	    	if (userData.isIsfrom1to2QueueInUse() != true) {
+	        	    		userData.setIsfrom1to2QueueInUse(true);
+	        	    		writeQueue = userData.getfrom1to2Queue();
+	        	    		readQueue = userData.getfrom2to1Queue();
+	        	    	} else if (userData.isIsfrom2to1QueueInUse() != true){
+	        	    		userData.setIsfrom2to1QueueInUse(true);
+	        	    		writeQueue = userData.getfrom2to1Queue();
+	        	    		readQueue = userData.getfrom1to2Queue();
+	        	    	} else {
+	        	    		//all queue is in use.
+	        	    		output.writeUTF("two user connected.");
+	                		output.flush();
+	        	    		writeQueue = null;
+	        	    		readQueue = null;
+	        	    		if (output != null) output.close();
+	        				if (input != null) input.close();
+	        				
+	        				output.writeUTF("trigger exception to terminate this conncetion and thread");
+	                		output.flush();
+	        	    	}
+	            		
+	        	    	cur_state = DATABYPASS;
+	            		break;
+	            	case DATABYPASS:
+	            		//------------------- do works --------------------            	
+	                	
+	                	//pass user_x's data to user_y
+	            		if (input.available() > 0) {
+	            			inMsg = input.readUTF();
+	            			if (writeQueue.offer(inMsg) == true) {
+	            				if (ThreadPooledServer.DEBUG) System.out.printf("%s )Received: \"%s\" from %s\n",userID, inMsg, clientSocket.getRemoteSocketAddress());
+	            			} else {
+	        					if (ThreadPooledServer.DEBUG) System.out.printf("%s )writeQueue is full\n", userID);
+	            			}
+	            		} else {
+	            			//No more data received from client,
+	            			//test whether the client is disconnected or not
+	            			output.writeUTF("W, 0, Are you alive?");
+	                		output.flush();
+	                		Thread.sleep(1000);
+	            		}
+	            		
+	            		//take data from user_y's then send to user_x         		
+	            		if ( !readQueue.isEmpty()) {
+	            			String msgFromClient2 = readQueue.poll();
+	            			output.writeUTF(msgFromClient2);
+	                		output.flush();
+	                		if (ThreadPooledServer.DEBUG) System.out.printf("%s )Take data \"%s\" from readQueue, send to  %s\n", userID, msgFromClient2, clientSocket.getRemoteSocketAddress());
+	            		}            	
+	                    Thread.sleep(250);
+	            		
+	            		break;
+	            		
+	            	default:;
+	            }
+            }//End Of SuperLoop
             
             // -----------------------           
         } catch (IOException e) {
