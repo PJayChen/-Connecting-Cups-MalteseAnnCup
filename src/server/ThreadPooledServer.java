@@ -10,7 +10,7 @@ public class ThreadPooledServer implements Runnable{
 	
 	public static final boolean DEBUG = true;
 	
-    protected int          serverPort   = 8080;
+    protected int          serverPort;
     protected ServerSocket serverSocket = null;
     protected boolean      isStopped    = false;
     protected Thread       runningThread= null;

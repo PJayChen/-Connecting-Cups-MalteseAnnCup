@@ -3,7 +3,7 @@ package server;
 public class Main {
 
 	public static void main(String[] args) {
-		ThreadPooledServer server = new ThreadPooledServer(8080);
+		ThreadPooledServer server = new ThreadPooledServer(5508);
 		new Thread(server).start();
 
 //		try {

@@ -35,6 +35,8 @@ public class WorkerRunnable implements Runnable{
     private String inMsg;
     String[] msgArray = new String[3];
     
+    private int noResponseCounter = 0;
+    
     public WorkerRunnable(Socket clientSocket) {
         this.clientSocket = clientSocket;
     }
@@ -55,7 +57,7 @@ public class WorkerRunnable implements Runnable{
 	            	case GETID:
 	            		inMsg = input.readUTF();
 	                	if (ThreadPooledServer.DEBUG) System.out.println(": " + inMsg);
-	                    msgArray = inMsg.split(", ");
+	                    msgArray = inMsg.split(",");
 	                    if (msgArray != null && msgArray[0].equals("N") && msgArray[1].equals("0")) {
 	                    	userID = new String(msgArray[2].toString());
 	                    	if (ThreadPooledServer.DEBUG) System.out.println("User ID: " + userID);
@@ -63,7 +65,7 @@ public class WorkerRunnable implements Runnable{
 	                    }
 	            		break;
 	            	case GRANT:
-	            		output.writeUTF("N, 1, ok");
+	            		output.writeUTF("N,1,ok");
 	            		output.flush();
 	            		
 	            		//traversal the user list to check the connected userID is existed or not.    	
@@ -120,10 +122,15 @@ public class WorkerRunnable implements Runnable{
 	            			}
 	            		} else {
 	            			//No more data received from client,
-	            			//test whether the client is disconnected or not
-	            			output.writeUTF("W, 0, Are you alive?");
-	                		output.flush();
-	                		Thread.sleep(1000);
+	            			//test whether the client is disconnected or not.
+	            			//Every 10 Seconds.
+	            			noResponseCounter++;
+	            			if (noResponseCounter > 1000) {
+	            				noResponseCounter = 0;
+	            				output.writeUTF("W,0,Are you alive?");
+		                		output.flush();	
+	            			}
+	                		Thread.sleep(10);
 	            		}
 	            		
 	            		//take data from user_y's then send to user_x         		
@@ -133,7 +140,7 @@ public class WorkerRunnable implements Runnable{
 	                		output.flush();
 	                		if (ThreadPooledServer.DEBUG) System.out.printf("%s )Take data \"%s\" from readQueue, send to  %s\n", userID, msgFromClient2, clientSocket.getRemoteSocketAddress());
 	            		}            	
-	                    Thread.sleep(250);
+	                    Thread.sleep(500);
 	            		
 	            		break;
 	            		
