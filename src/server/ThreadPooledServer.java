@@ -3,12 +3,13 @@ package server;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ThreadPooledServer implements Runnable{
 	
-	public static final boolean DEBUG = true;
+	public static final boolean DEBUG = false;
 	
     protected int          serverPort;
     protected ServerSocket serverSocket = null;
@@ -18,8 +19,11 @@ public class ThreadPooledServer implements Runnable{
     protected ExecutorService threadPool =
         Executors.newFixedThreadPool(10);
 
-    public ThreadPooledServer(int port){
+    private BlockingQueue<String> rawDataStreamQueue;
+    
+    public ThreadPooledServer(int port, BlockingQueue<String> rawDataStreamQueue){
         this.serverPort = port;
+        this.rawDataStreamQueue = rawDataStreamQueue;
     }
 
     public void run(){
@@ -41,7 +45,7 @@ public class ThreadPooledServer implements Runnable{
             }
             //assign the work to a thread 
             this.threadPool.execute(
-                new WorkerRunnable(clientSocket));
+                new WorkerRunnable(clientSocket, rawDataStreamQueue));
         }
         this.threadPool.shutdown();
         System.out.println("Server Stopped.") ;

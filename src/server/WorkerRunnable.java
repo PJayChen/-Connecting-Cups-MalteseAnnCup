@@ -37,8 +37,11 @@ public class WorkerRunnable implements Runnable{
     
     private int noResponseCounter = 0;
     
-    public WorkerRunnable(Socket clientSocket) {
+    private BlockingQueue<String> rawDataStreamQueue;
+    
+    public WorkerRunnable(Socket clientSocket, BlockingQueue<String> rawDataStreamQueue) {
         this.clientSocket = clientSocket;
+        this.rawDataStreamQueue = rawDataStreamQueue;
     }
 
     public void run() {
@@ -115,6 +118,9 @@ public class WorkerRunnable implements Runnable{
 	                	//pass user_x's data to user_y
 	            		if (input.available() > 0) {
 	            			inMsg = input.readUTF();
+	            			//send to motion recognition thread
+	            			rawDataStreamQueue.put(inMsg);
+	            			
 	            			if (writeQueue.offer(inMsg) == true) {
 	            				if (ThreadPooledServer.DEBUG) System.out.printf("%s )Received: \"%s\" from %s\n",userID, inMsg, clientSocket.getRemoteSocketAddress());
 	            			} else {
