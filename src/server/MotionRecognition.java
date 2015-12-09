@@ -31,6 +31,8 @@ public class MotionRecognition extends Thread {
 	private static final int FIND_END_FRAME = 2;
 	private static final int ANALYSIS_FRAMES = 3;
 	private int state = MOTION_DETECTION;
+	
+	private static final int THRESHOLD_MOTION = 50;
 
 	private List<List<FeatureVector>> motionFramesList;
 
@@ -90,7 +92,8 @@ public class MotionRecognition extends Thread {
 		}
 
 	}
-
+    
+	//Power = 1/N * Sum(f(n))^2
 	private int getPowerOfFrame(List<FeatureVector> featureVectorList) {
 		int power = 0;
 
@@ -103,6 +106,8 @@ public class MotionRecognition extends Thread {
 		return power;
 	}
 
+	//Framing sample sequence.
+	//64 samples per frame, 50% overlap
 	private List<FeatureVector> getFrame(List<FeatureVector> featureVectorList) {
 		List<FeatureVector> frameFV = new LinkedList<FeatureVector>();
 
@@ -117,6 +122,7 @@ public class MotionRecognition extends Thread {
 		return frameFV;
 	}
 
+	//Detect whether active motion or not 
 	private boolean motionDetection(List<FeatureVector> featureVectorList) {
 
 		System.out.printf("Frame[%d]: frame size is %d, ", frameIndex, featureVectorList.size());
@@ -127,7 +133,7 @@ public class MotionRecognition extends Thread {
 			System.out.printf("Power is %d \n", power);
 		}
 
-		if (power > 50)
+		if (power > THRESHOLD_MOTION)
 			return true;
 		else
 			return false;

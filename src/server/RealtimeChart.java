@@ -14,7 +14,7 @@ public class RealtimeChart {
 	public static final String SERIES_NAME_1 = "x";
 	public static final String SERIES_NAME_2 = "y";
 	public static final String SERIES_NAME_3 = "z";
-	public static final String SERIES_NAME_4 = "average";
+	public static final String SERIES_NAME_4 = "Magnitude";
 	private List<Integer> xData;
 	private List<Integer> yData;
 
