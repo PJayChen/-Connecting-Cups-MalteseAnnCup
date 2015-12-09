@@ -24,7 +24,7 @@ public class MotionRecognition extends Thread {
 	private int frameIndex = 0;
 
 	// for plot
-	private List<Integer> accel_x, accel_y, accel_z, accel_average;
+	private List<Integer> accel_x, accel_y, accel_z, accel_magnitude;
 	private List<Integer> axis_x;
 
 	private static final int MOTION_DETECTION = 1;
@@ -41,7 +41,7 @@ public class MotionRecognition extends Thread {
 		this.accel_x = new LinkedList<Integer>();
 		this.accel_y = new LinkedList<Integer>();
 		this.accel_z = new LinkedList<Integer>();
-		this.accel_average = new LinkedList<Integer>();
+		this.accel_magnitude = new LinkedList<Integer>();
 		this.axis_x = new LinkedList<Integer>();
 		this.axis_x.add(0);
 
@@ -63,7 +63,7 @@ public class MotionRecognition extends Thread {
 						int z = Integer.valueOf(accelStr[2]);
 						int y = Integer.valueOf(accelStr[1]);
 						int x = Integer.valueOf(accelStr[0]);
-						int average = (int) (Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2) + Math.pow(z, 2)) - 64);
+						int magnitude = (int) (Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2) + Math.pow(z, 2)) - 64);
 						int norm = (int) (Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2) + Math.pow(z, 2)));
 						// store parsed data into Lists for plot
 						accel_z.add(Integer.valueOf(accelStr[2]) * 50 / norm);
@@ -72,10 +72,10 @@ public class MotionRecognition extends Thread {
 						// accel_z.add(Integer.valueOf(accelStr[2]));
 						// accel_y.add(Integer.valueOf(accelStr[1]));
 						// accel_x.add(Integer.valueOf(accelStr[0]));
-						accel_average.add(average);
+						accel_magnitude.add(magnitude);
 
 						// store parsed data into processing List
-						FeatureVector fv = new FeatureVector(x, y, z, average);
+						FeatureVector fv = new FeatureVector(x, y, z, magnitude);
 						featureVectorList.add(fv);
 
 					} catch (NumberFormatException e) {
@@ -91,9 +91,9 @@ public class MotionRecognition extends Thread {
 			for (int i = size; i < accel_x.size(); i++) {
 				// System.out.printf("%d %d %d, ", accel_x.get(i),
 				// accel_y.get(i), accel_z.get(i));
-				System.out.printf("%d %d %d, average: %d; ", featureVectorList.get(i).getAcceleration_x(),
+				System.out.printf("%d %d %d, magnitude: %d; ", featureVectorList.get(i).getAcceleration_x(),
 						featureVectorList.get(i).getAcceleration_y(), featureVectorList.get(i).getAcceleration_z(),
-						featureVectorList.get(i).getAcceleration_average());
+						featureVectorList.get(i).getAcceleration_magnitude());
 			}
 			System.out.printf("\n");
 		}
@@ -104,7 +104,7 @@ public class MotionRecognition extends Thread {
 		int power = 0;
 
 		for (int i = 0; i < featureVectorList.size(); i++) {
-			power += Math.pow(featureVectorList.get(i).getAcceleration_average(), 2);
+			power += Math.pow(featureVectorList.get(i).getAcceleration_magnitude(), 2);
 		}
 
 		power /= featureVectorList.size();
@@ -170,10 +170,10 @@ public class MotionRecognition extends Thread {
 				while (axis_x.size() > 200) {
 					axis_x.remove(0);
 				}
-				while (accel_average.size() > 200) {
-					accel_average.remove(0);
+				while (accel_magnitude.size() > 200) {
+					accel_magnitude.remove(0);
 				}
-				realtimeChart.updatChart(accel_average, accel_x, accel_y, accel_z, axis_x);
+				realtimeChart.updatChart(accel_magnitude, accel_x, accel_y, accel_z, axis_x);
 				// realtimeChart.updatChart(accel_x, accel_x, accel_y, accel_z,
 				// axis_x);
 				// -----------
@@ -242,7 +242,7 @@ public class MotionRecognition extends Thread {
 							for (int i = 0; i < fv.size(); i++) {
 								System.out.printf("[%d, %d, %d, %d], ", fv.get(i).getAcceleration_x(),
 										fv.get(i).getAcceleration_y(), fv.get(i).getAcceleration_z(),
-										fv.get(i).getAcceleration_average());
+										fv.get(i).getAcceleration_magnitude());
 							}
 							System.out.println("\n");
 						}
@@ -270,7 +270,7 @@ public class MotionRecognition extends Thread {
 								for (int i = 0; i < fv.size(); i++) {
 									System.out.printf("[%d, %d, %d, %d], ", fv.get(i).getAcceleration_x(),
 											fv.get(i).getAcceleration_y(), fv.get(i).getAcceleration_z(),
-											fv.get(i).getAcceleration_average());
+											fv.get(i).getAcceleration_magnitude());
 								}
 								System.out.println("\n");
 							}
