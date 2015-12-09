@@ -23,8 +23,8 @@ public class MotionRecognition extends Thread {
 	private List<FeatureVector> featureVectorList;
 	private int frameIndex = 0;
 
-	// for plot
-	private List<Integer> accel_x, accel_y, accel_z, accel_magnitude;
+	// members for plot chart
+	private List<FeatureVector> featureVectorForPlot;
 	private List<Integer> axis_x;
 
 	private static final int MOTION_DETECTION = 1;
@@ -38,10 +38,7 @@ public class MotionRecognition extends Thread {
 		super();
 		this.rawDataStreamQueue = rawDataStreamQueue;
 
-		this.accel_x = new LinkedList<Integer>();
-		this.accel_y = new LinkedList<Integer>();
-		this.accel_z = new LinkedList<Integer>();
-		this.accel_magnitude = new LinkedList<Integer>();
+		this.featureVectorForPlot = new LinkedList<FeatureVector>();
 		this.axis_x = new LinkedList<Integer>();
 		this.axis_x.add(0);
 
@@ -49,7 +46,7 @@ public class MotionRecognition extends Thread {
 	}
 
 	private void parsingRawDataStream(String stream) {
-		int size = accel_x.size(); // store the last size of accel data
+		int size = featureVectorForPlot.size(); // store the last size of accel data
 		if (DEBUG_PARSING)
 			System.out.print(stream);
 		String[] splitedStream = stream.split(";");
@@ -65,18 +62,12 @@ public class MotionRecognition extends Thread {
 						int x = Integer.valueOf(accelStr[0]);
 						int magnitude = (int) (Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2) + Math.pow(z, 2)) - 64);
 						int norm = (int) (Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2) + Math.pow(z, 2)));
-						// store parsed data into Lists for plot
-						accel_z.add(Integer.valueOf(accelStr[2]) * 50 / norm);
-						accel_y.add(Integer.valueOf(accelStr[1]) * 50 / norm);
-						accel_x.add(Integer.valueOf(accelStr[0]) * 50 / norm);
-						// accel_z.add(Integer.valueOf(accelStr[2]));
-						// accel_y.add(Integer.valueOf(accelStr[1]));
-						// accel_x.add(Integer.valueOf(accelStr[0]));
-						accel_magnitude.add(magnitude);
+						
+						// store parsed data into a List for plot chart
+						featureVectorForPlot.add(new FeatureVector(x,y,z,magnitude));
 
 						// store parsed data into processing List
-						FeatureVector fv = new FeatureVector(x, y, z, magnitude);
-						featureVectorList.add(fv);
+						featureVectorList.add(new FeatureVector(x, y, z, magnitude));
 
 					} catch (NumberFormatException e) {
 						if (DEBUG_PARSING)
@@ -88,7 +79,7 @@ public class MotionRecognition extends Thread {
 
 		if (DEBUG_PARSING) {
 			System.out.printf("Stored data:\n");
-			for (int i = size; i < accel_x.size(); i++) {
+			for (int i = size; i < featureVectorForPlot.size(); i++) {
 				// System.out.printf("%d %d %d, ", accel_x.get(i),
 				// accel_y.get(i), accel_z.get(i));
 				System.out.printf("%d %d %d, magnitude: %d; ", featureVectorList.get(i).getAcceleration_x(),
@@ -144,7 +135,7 @@ public class MotionRecognition extends Thread {
 
 	@Override
 	public void run() {
-		// Setup chart
+		// ----- Setup chart -----
 		final RealtimeChart realtimeChart = new RealtimeChart();
 
 		while (true) {
@@ -153,30 +144,19 @@ public class MotionRecognition extends Thread {
 				// ----- take data from the queue and parse it. -----
 				parsingRawDataStream(rawDataStreamQueue.take());
 
-				// ----- Plot data -----
+				// ----- Plot data -----				
 				// Increase time axis
-				while (axis_x.size() < accel_x.size())
+				while (axis_x.size() < featureVectorForPlot.size())
 					axis_x.add(axis_x.get(axis_x.size() - 1) + 10);
 				// Limit the total number of points
-				while (accel_x.size() > 200) {
-					accel_x.remove(0);
-				}
-				while (accel_y.size() > 200) {
-					accel_y.remove(0);
-				}
-				while (accel_z.size() > 200) {
-					accel_z.remove(0);
-				}
-				while (axis_x.size() > 200) {
+				while (axis_x.size() > 200  && featureVectorForPlot.size() > 200) {
 					axis_x.remove(0);
+					featureVectorForPlot.remove(0);
 				}
-				while (accel_magnitude.size() > 200) {
-					accel_magnitude.remove(0);
-				}
-				realtimeChart.updatChart(accel_magnitude, accel_x, accel_y, accel_z, axis_x);
-				// realtimeChart.updatChart(accel_x, accel_x, accel_y, accel_z,
-				// axis_x);
-				// -----------
+					
+				//update chart
+				realtimeChart.updateChart(axis_x, featureVectorForPlot);
+				// ----------------------
 
 //				if (DEBUG_MOTION_DETECTION) {
 //					System.out.printf("State [%d] \n\n", state);
@@ -280,7 +260,7 @@ public class MotionRecognition extends Thread {
 					state = MOTION_DETECTION;
 					break;
 				}
-				// ----------
+				// ----------------------
 
 			} catch (InterruptedException e) {
 				e.printStackTrace();
