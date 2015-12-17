@@ -1,5 +1,6 @@
 package server;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -8,6 +9,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 
 import net.sf.javaml.core.DenseInstance;
@@ -248,12 +251,11 @@ public class MotionRecognition extends Thread {
 		return dist;
 	}
 
-	private void identifyMotion(String templateName) {
+	private void identifyMotion(String templateName, Queue<SimilarTemplate> similarityQueue) {
 
 		try {
-			// Read activity motion frames from the file to check
-			// whether store correctly.
-			FileInputStream fis = new FileInputStream("./dataset/motion_" + templateName);
+			// Read motion template from file.
+			FileInputStream fis = new FileInputStream("./templates/" + templateName);
 			ObjectInputStream ois;
 			ois = new ObjectInputStream(fis);
 			List<List<FeatureVector>> mList = (List<List<FeatureVector>>) ois.readObject();
@@ -277,6 +279,8 @@ public class MotionRecognition extends Thread {
 			if (DEBUG_IDENTIFY_MOTION) {
 				System.out.printf("Motion %s, similarity: %d\n", templateName, (int)dist);
 			}
+			
+			similarityQueue.add(new SimilarTemplate(templateName, (int)dist));
 			
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -419,16 +423,23 @@ public class MotionRecognition extends Thread {
 					break;
 				case MOTION_RECOGNITION:
 					if (DEBUG_IDENTIFY_MOTION) {
-						System.out.println("========================");
+						System.out.println("\n========================");
 					}
-					identifyMotion("shake_v");
-					identifyMotion("shake_v1");
-					identifyMotion("shake_h");
-					identifyMotion("shake_h1");
-					identifyMotion("sway");
-					identifyMotion("sway1");
+					//a min-Heap contain similarity of all templates.
+					//top of the Heap is the most similar one of templates.
+					PriorityQueue<SimilarTemplate> similarityQueue = new PriorityQueue<SimilarTemplate>();
+					
+					//Calculate similarity between testing frames and templates 
+					File[] templateFileList = new File(new String("./templates/")).listFiles();					
+					for (int i=0; i<templateFileList.length; i++) {
+						identifyMotion(templateFileList[i].getName(), similarityQueue);
+					}
+
 					if (DEBUG_IDENTIFY_MOTION) {
 						System.out.println("========================");
+//						System.out.println("Detect: " + similarityQueue.peek().getTemplateName());
+						String[] splitedTemplateName = similarityQueue.peek().getTemplateName().split("_");
+						System.out.println("Detect: " + splitedTemplateName[1]);						
 					}					
 					state = MOTION_DETECTION;
 					break;
