@@ -42,7 +42,7 @@ public class MotionRecognition extends Thread {
 	private static final int MOTION_RECOGNITION = 4;
 	private int state = MOTION_DETECTION;
 
-	private static final int THRESHOLD_MOTION = 50;
+	private static final int THRESHOLD_MOTION = 40;
 
 	private List<List<FeatureVector>> motionFramesList;
 
@@ -57,11 +57,51 @@ public class MotionRecognition extends Thread {
 		this.featureVectorList = new LinkedList<FeatureVector>();
 	}
 
+	// Z-score normalization
+	private FeatureVector normalization(FeatureVector fv, String type) {
+
+		FeatureVector normalizedFV = null;
+
+		if (type.equals("Z_SCORE")) {
+			if (DEBUG_PARSING)
+				System.out.println("Z_SCORE");
+			double average = (fv.getAcceleration_x() + fv.getAcceleration_y() + fv.getAcceleration_z()) / 3;
+
+			double standardDeviation = Math
+					.sqrt((Math.pow(fv.getAcceleration_x() - average, 2) + Math.pow(fv.getAcceleration_y() - average, 2)
+							+ Math.pow(fv.getAcceleration_z() - average, 2)) / (3 - 1));
+
+			// The result is multiply 10 to be able to make it as a integer
+			// number.
+			int zScore_x = (int) ((fv.getAcceleration_x() - average) / standardDeviation * 10);
+			int zScore_y = (int) ((fv.getAcceleration_y() - average) / standardDeviation * 10);
+			int zScore_z = (int) ((fv.getAcceleration_z() - average) / standardDeviation * 10);
+
+			// normalized data. magnitude just bypass to output.
+			normalizedFV = new FeatureVector(zScore_x, zScore_y, zScore_z, fv.getAcceleration_magnitude());
+
+		} else if (type.equals("NORM")) {
+			if (DEBUG_PARSING)
+				System.out.println("NORM");
+			int norm = (int) (Math.sqrt(Math.pow(fv.getAcceleration_x(), 2) + Math.pow(fv.getAcceleration_y(), 2)
+					+ Math.pow(fv.getAcceleration_z(), 2)));
+			int norm_x = fv.getAcceleration_x() / norm * 10;
+			int norm_y = fv.getAcceleration_y() / norm * 10;
+			int norm_z = fv.getAcceleration_z() / norm * 10;
+
+			normalizedFV = new FeatureVector(norm_x, norm_y, norm_z, norm);
+		}
+		if (DEBUG_PARSING)
+			System.out.println("None");
+		return normalizedFV;
+	}
+
 	private void parsingRawDataStream(String stream) {
 		int size = featureVectorForPlot.size(); // store the last size of accel
 												// data
 		if (DEBUG_PARSING)
 			System.out.print(stream);
+
 		String[] splitedStream = stream.split(";");
 		if (splitedStream[0].equals("N,2,")) {
 			if (DEBUG_PARSING)
@@ -74,30 +114,15 @@ public class MotionRecognition extends Thread {
 						int y = Integer.valueOf(accelStr[1]);
 						int x = Integer.valueOf(accelStr[0]);
 						int magnitude = (int) (Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2) + Math.pow(z, 2)) - 64);
-						// int norm = (int) (Math.sqrt(Math.pow(x, 2) +
-						// Math.pow(y, 2) + Math.pow(z, 2)));
-						// double average = (x + y + z) / 3;
-						// double standardDeviation = (Math
-						// .sqrt((Math.pow(x - average, 2) + Math.pow(y -
-						// average, 2) + Math.pow(z - average, 2))
-						// / (3 - 1)));
-						double average = (x + y + z + magnitude) / 4;
-						double standardDeviation = (Math.sqrt((Math.pow(x - average, 2) + Math.pow(y - average, 2)
-								+ Math.pow(z - average, 2) + Math.pow(magnitude - average, 2)) / (4 - 1)));
-						int zScore_x = (int) ((x - average) / standardDeviation * 10);
-						int zScore_y = (int) ((y - average) / standardDeviation * 10);
-						int zScore_z = (int) ((z - average) / standardDeviation * 10);
-						int zScore_m = (int) ((magnitude - average) / standardDeviation * 10);
 
 						// store parsed data into a List for plot chart
-						// featureVectorForPlot.add(new
-						// FeatureVector(x,y,z,magnitude));
-						// featureVectorForPlot.add(new FeatureVector(zScore_x,
-						// zScore_y, zScore_z, magnitude));
-						featureVectorForPlot.add(new FeatureVector(zScore_x, zScore_y, zScore_z, zScore_m));
+						featureVectorForPlot.add(normalization(new FeatureVector(x, y, z, magnitude), "Z_SCORE"));
 
 						// store parsed data into processing List
 						featureVectorList.add(new FeatureVector(x, y, z, magnitude));
+
+						if (DEBUG_PARSING)
+							System.out.println("size: " + featureVectorForPlot.size() + ", " + axis_x.size());
 
 					} catch (NumberFormatException e) {
 						if (DEBUG_PARSING)
@@ -181,14 +206,32 @@ public class MotionRecognition extends Thread {
 		for (int j = 0; j < templateFeatureFrameList.size(); j++) {
 			// extracting features from each frame
 			for (int i = 0; i < templateFeatureFrameList.get(j).size(); i++) {
-				d_x[j * templateFeatureFrameList.get(j).size() + i] = (double) templateFeatureFrameList.get(j).get(i)
-						.getAcceleration_x();
-				d_y[j * templateFeatureFrameList.get(j).size() + i] = (double) templateFeatureFrameList.get(j).get(i)
-						.getAcceleration_y();
-				d_z[j * templateFeatureFrameList.get(j).size() + i] = (double) templateFeatureFrameList.get(j).get(i)
-						.getAcceleration_z();
-				d_m[j * templateFeatureFrameList.get(j).size() + i] = (double) templateFeatureFrameList.get(j).get(i)
-						.getAcceleration_magnitude();
+
+				// Normalized acceleration data
+				FeatureVector fv = normalization(
+						new FeatureVector(templateFeatureFrameList.get(j).get(i).getAcceleration_x(),
+								templateFeatureFrameList.get(j).get(i).getAcceleration_y(),
+								templateFeatureFrameList.get(j).get(i).getAcceleration_z(),
+								templateFeatureFrameList.get(j).get(i).getAcceleration_magnitude()),
+						"Z_SCORE");
+				d_x[j * templateFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_x();
+				d_y[j * templateFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_y();
+				d_z[j * templateFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_z();
+				d_m[j * templateFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_magnitude();
+
+				// Raw acceleration data
+				// d_x[j * templateFeatureFrameList.get(j).size() + i] =
+				// (double) templateFeatureFrameList.get(j).get(i)
+				// .getAcceleration_x();
+				// d_y[j * templateFeatureFrameList.get(j).size() + i] =
+				// (double) templateFeatureFrameList.get(j).get(i)
+				// .getAcceleration_y();
+				// d_z[j * templateFeatureFrameList.get(j).size() + i] =
+				// (double) templateFeatureFrameList.get(j).get(i)
+				// .getAcceleration_z();
+				// d_m[j * templateFeatureFrameList.get(j).size() + i] =
+				// (double) templateFeatureFrameList.get(j).get(i)
+				// .getAcceleration_magnitude();
 			}
 		}
 		// if (DEBUG_SIMILARITY) {
@@ -213,14 +256,32 @@ public class MotionRecognition extends Thread {
 		for (int j = 0; j < testingFeatureFrameList.size(); j++) {
 			// extracting features from each frame
 			for (int i = 0; i < testingFeatureFrameList.get(j).size(); i++) {
-				d_x[j * testingFeatureFrameList.get(j).size() + i] = (double) testingFeatureFrameList.get(j).get(i)
-						.getAcceleration_x();
-				d_y[j * testingFeatureFrameList.get(j).size() + i] = (double) testingFeatureFrameList.get(j).get(i)
-						.getAcceleration_y();
-				d_z[j * testingFeatureFrameList.get(j).size() + i] = (double) testingFeatureFrameList.get(j).get(i)
-						.getAcceleration_z();
-				d_m[j * testingFeatureFrameList.get(j).size() + i] = (double) testingFeatureFrameList.get(j).get(i)
-						.getAcceleration_magnitude();
+
+				// Normalized acceleration data
+				FeatureVector fv = normalization(
+						new FeatureVector(testingFeatureFrameList.get(j).get(i).getAcceleration_x(),
+								testingFeatureFrameList.get(j).get(i).getAcceleration_y(),
+								testingFeatureFrameList.get(j).get(i).getAcceleration_z(),
+								testingFeatureFrameList.get(j).get(i).getAcceleration_magnitude()),
+						"Z_SCORE");
+				d_x[j * testingFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_x();
+				d_y[j * testingFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_y();
+				d_z[j * testingFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_z();
+				d_m[j * testingFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_magnitude();
+
+				// Raw acceleration data
+				// d_x[j * testingFeatureFrameList.get(j).size() + i] = (double)
+				// testingFeatureFrameList.get(j).get(i)
+				// .getAcceleration_x();
+				// d_y[j * testingFeatureFrameList.get(j).size() + i] = (double)
+				// testingFeatureFrameList.get(j).get(i)
+				// .getAcceleration_y();
+				// d_z[j * testingFeatureFrameList.get(j).size() + i] = (double)
+				// testingFeatureFrameList.get(j).get(i)
+				// .getAcceleration_z();
+				// d_m[j * testingFeatureFrameList.get(j).size() + i] = (double)
+				// testingFeatureFrameList.get(j).get(i)
+				// .getAcceleration_magnitude();
 			}
 		}
 		// if (DEBUG_SIMILARITY) {
@@ -240,8 +301,12 @@ public class MotionRecognition extends Thread {
 		double dist = FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_x), new TimeSeries(testingInstance_x),
 				30)
 				+ FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_y), new TimeSeries(testingInstance_y), 30)
-				+ FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_z), new TimeSeries(testingInstance_z), 30)
-				+ FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_m), new TimeSeries(testingInstance_m), 30);
+				+ FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_z), new TimeSeries(testingInstance_z), 30);
+		// + FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_m), new
+		// TimeSeries(testingInstance_m), 30);
+		// double dist = FastDTW.getWarpDistBetween(new
+		// TimeSeries(templateInstance_m), new TimeSeries(testingInstance_m),
+		// 30);
 
 		if (DEBUG_SIMILARITY) {
 			System.out.printf("Similarity: %d\n", (int) dist);
@@ -261,27 +326,26 @@ public class MotionRecognition extends Thread {
 			List<List<FeatureVector>> mList = (List<List<FeatureVector>>) ois.readObject();
 			ois.close();
 			fis.close();
-			/*if (DEBUG_IDENTIFY_MOTION) {
-				System.out.printf("[Read from file] ");
-				System.out.printf("Number of frame is %d \n", mList.size());
-				for (List<FeatureVector> fv : mList) {
-					for (int i = 0; i < fv.size(); i++) {
-						System.out.printf("[%d, %d, %d, %d], ", fv.get(i).getAcceleration_x(),
-								fv.get(i).getAcceleration_y(), fv.get(i).getAcceleration_z(),
-								fv.get(i).getAcceleration_magnitude());
-					}
-					System.out.println("\n");
-				}
-			}*/
-			
-			//compare run-time motion frames with template 
+			/*
+			 * if (DEBUG_IDENTIFY_MOTION) { System.out.printf(
+			 * "[Read from file] "); System.out.printf(
+			 * "Number of frame is %d \n", mList.size()); for
+			 * (List<FeatureVector> fv : mList) { for (int i = 0; i < fv.size();
+			 * i++) { System.out.printf("[%d, %d, %d, %d], ",
+			 * fv.get(i).getAcceleration_x(), fv.get(i).getAcceleration_y(),
+			 * fv.get(i).getAcceleration_z(),
+			 * fv.get(i).getAcceleration_magnitude()); }
+			 * System.out.println("\n"); } }
+			 */
+
+			// compare run-time motion frames with template
 			double dist = getSimilarity(mList, motionFramesList);
 			if (DEBUG_IDENTIFY_MOTION) {
-				System.out.printf("Motion %s, similarity: %d\n", templateName, (int)dist);
+				System.out.printf("Motion %s, similarity: %d\n", templateName, (int) dist);
 			}
-			
-			similarityQueue.add(new SimilarTemplate(templateName, (int)dist));
-			
+
+			similarityQueue.add(new SimilarTemplate(templateName, (int) dist));
+
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (ClassNotFoundException e) {
@@ -312,12 +376,14 @@ public class MotionRecognition extends Thread {
 				}
 
 				// update chart
-				realtimeChart.updateChart(axis_x, featureVectorForPlot);
+				if (axis_x.size() == featureVectorForPlot.size())
+					realtimeChart.updateChart(axis_x, featureVectorForPlot);
 				// ----------------------
 
 				// if (DEBUG_MOTION_DETECTION) {
 				// System.out.printf("State [%d] \n\n", state);
 				// }
+
 				// ----- processing data -----
 				switch (state) {
 				case MOTION_DETECTION:
@@ -425,22 +491,30 @@ public class MotionRecognition extends Thread {
 					if (DEBUG_IDENTIFY_MOTION) {
 						System.out.println("\n========================");
 					}
-					//a min-Heap contain similarity of all templates.
-					//top of the Heap is the most similar one of templates.
+					// a min-Heap contain similarity of all templates.
+					// top of the Heap is the most similar one of templates.
 					PriorityQueue<SimilarTemplate> similarityQueue = new PriorityQueue<SimilarTemplate>();
-					
-					//Calculate similarity between testing frames and templates 
-					File[] templateFileList = new File(new String("./templates/")).listFiles();					
-					for (int i=0; i<templateFileList.length; i++) {
+
+					// Calculate similarity between testing frames and templates
+					File[] templateFileList = new File(new String("./templates/")).listFiles();
+					for (int i = 0; i < templateFileList.length; i++) {
 						identifyMotion(templateFileList[i].getName(), similarityQueue);
 					}
 
 					if (DEBUG_IDENTIFY_MOTION) {
 						System.out.println("========================");
-//						System.out.println("Detect: " + similarityQueue.peek().getTemplateName());
-						String[] splitedTemplateName = similarityQueue.peek().getTemplateName().split("_");
-						System.out.println("Detect: " + splitedTemplateName[1]);						
-					}					
+						SimilarTemplate mostSimilarOne = similarityQueue.remove();
+						SimilarTemplate similarOne = similarityQueue.remove();
+
+						String[] motionOfmostSimilarOne = mostSimilarOne.getTemplateName().split("_");
+						String[] motionOfSimilarOne = similarOne.getTemplateName().split("_");
+
+						System.out.println("( " + motionOfSimilarOne[1] + " " + similarOne.getSimilarity() + " - "
+								+ motionOfmostSimilarOne[1] + " " + mostSimilarOne.getSimilarity() + " = "
+								+ String.valueOf(similarOne.getSimilarity() - mostSimilarOne.getSimilarity()) + " )\n");
+
+						System.out.println("Detect: " + motionOfmostSimilarOne[1]);
+					}
 					state = MOTION_DETECTION;
 					break;
 				}
