@@ -42,7 +42,8 @@ public class MotionRecognition extends Thread {
 	private static final int MOTION_RECOGNITION = 4;
 	private int state = MOTION_DETECTION;
 
-	private static final int THRESHOLD_MOTION = 40;
+	private static final int FRAME_SIZE = 64;
+	private static final int THRESHOLD_MOTION = 100;
 
 	private List<List<FeatureVector>> motionFramesList;
 
@@ -165,10 +166,10 @@ public class MotionRecognition extends Thread {
 		List<FeatureVector> frameFV = new LinkedList<FeatureVector>();
 
 		// Framing the samples, 64 samples per frame, 50% overlap
-		for (int i = 0; i < 32; i++) {
+		for (int i = 0; i < FRAME_SIZE/2; i++) {
 			frameFV.add(featureVectorList.remove(0));
 		}
-		for (int i = 0; i < 32; i++) {
+		for (int i = 0; i < FRAME_SIZE/2; i++) {
 			frameFV.add(featureVectorList.get(i));
 		}
 		frameIndex++;
@@ -298,15 +299,11 @@ public class MotionRecognition extends Thread {
 		// -----------------------------------------------------------------
 
 		// ----- calculate distance by fastDTW -----
-		double dist = FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_x), new TimeSeries(testingInstance_x),
+		double dist = (FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_x), new TimeSeries(testingInstance_x),
 				30)
 				+ FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_y), new TimeSeries(testingInstance_y), 30)
-				+ FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_z), new TimeSeries(testingInstance_z), 30);
-		// + FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_m), new
-		// TimeSeries(testingInstance_m), 30);
-		// double dist = FastDTW.getWarpDistBetween(new
-		// TimeSeries(templateInstance_m), new TimeSeries(testingInstance_m),
-		// 30);
+				+ FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_z), new TimeSeries(testingInstance_z), 30))/3;
+				//+ FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_m), new TimeSeries(testingInstance_m), 30);
 
 		if (DEBUG_SIMILARITY) {
 			System.out.printf("Similarity: %d\n", (int) dist);
@@ -340,9 +337,9 @@ public class MotionRecognition extends Thread {
 
 			// compare run-time motion frames with template
 			double dist = getSimilarity(mList, motionFramesList);
-			if (DEBUG_IDENTIFY_MOTION) {
-				System.out.printf("Motion %s, similarity: %d\n", templateName, (int) dist);
-			}
+//			if (DEBUG_IDENTIFY_MOTION) {
+//				System.out.printf("Motion %s, similarity: %d\n", templateName, (int) dist);
+//			}
 
 			similarityQueue.add(new SimilarTemplate(templateName, (int) dist));
 
@@ -387,7 +384,7 @@ public class MotionRecognition extends Thread {
 				// ----- processing data -----
 				switch (state) {
 				case MOTION_DETECTION:
-					if (featureVectorList.size() >= 64) {
+					if (featureVectorList.size() >= FRAME_SIZE) {
 						// get a frame from input sequence of samples
 						List<FeatureVector> frameFV = getFrame(featureVectorList);
 
@@ -413,7 +410,7 @@ public class MotionRecognition extends Thread {
 					}
 					break;
 				case FIND_END_FRAME:
-					if (featureVectorList.size() >= 64) {
+					if (featureVectorList.size() >= FRAME_SIZE) {
 						// get a frame from input sequence of samples
 						List<FeatureVector> frameFV = getFrame(featureVectorList);
 
@@ -502,16 +499,24 @@ public class MotionRecognition extends Thread {
 					}
 
 					if (DEBUG_IDENTIFY_MOTION) {
-						System.out.println("========================");
 						SimilarTemplate mostSimilarOne = similarityQueue.remove();
 						SimilarTemplate similarOne = similarityQueue.remove();
-
+						
 						String[] motionOfmostSimilarOne = mostSimilarOne.getTemplateName().split("_");
 						String[] motionOfSimilarOne = similarOne.getTemplateName().split("_");
 
-						System.out.println("( " + motionOfSimilarOne[1] + " " + similarOne.getSimilarity() + " - "
-								+ motionOfmostSimilarOne[1] + " " + mostSimilarOne.getSimilarity() + " = "
-								+ String.valueOf(similarOne.getSimilarity() - mostSimilarOne.getSimilarity()) + " )\n");
+						System.out.println( similarOne.getTemplateName() + " " + similarOne.getSimilarity() + " - "
+								+ mostSimilarOne.getTemplateName() + " " + mostSimilarOne.getSimilarity() + " = "
+								+ String.valueOf(similarOne.getSimilarity() - mostSimilarOne.getSimilarity()) );
+						
+						System.out.println("========================");
+						
+						while (!similarityQueue.isEmpty()) {
+							SimilarTemplate st = similarityQueue.remove();
+							System.out.printf("%s\t\t similarity: %d \n", st.getTemplateName(), st.getSimilarity());
+						}
+												
+						System.out.println("========================");												
 
 						System.out.println("Detect: " + motionOfmostSimilarOne[1]);
 					}
