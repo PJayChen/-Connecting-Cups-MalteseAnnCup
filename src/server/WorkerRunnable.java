@@ -96,7 +96,7 @@ public class WorkerRunnable implements Runnable{
 	        	    		readQueue = userData.getfrom1to2Queue();
 	        	    	} else {
 	        	    		//all queue of specific userID are in use.
-	        	    		output.writeUTF("two user connected.");
+	        	    		output.writeUTF("E,1,two user connected.");
 	                		output.flush();
 	        	    		writeQueue = null;
 	        	    		readQueue = null;
@@ -123,9 +123,9 @@ public class WorkerRunnable implements Runnable{
 	            		} else {
 	            			//No more data received from client,
 	            			//test whether the client is disconnected or not.
-	            			//Every 10 Seconds.
+	            			//Every 5 Seconds.
 	            			noResponseCounter++;
-	            			if (noResponseCounter > 1000) {
+	            			if (noResponseCounter > 10) {
 	            				noResponseCounter = 0;
 	            				output.writeUTF("W,0,Are you alive?");
 		                		output.flush();	
