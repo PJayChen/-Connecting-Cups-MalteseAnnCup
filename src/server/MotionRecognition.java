@@ -117,7 +117,7 @@ public class MotionRecognition extends Thread {
 						int magnitude = (int) (Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2) + Math.pow(z, 2)) - 64);
 
 						// store parsed data into a List for plot chart
-						featureVectorForPlot.add(normalization(new FeatureVector(x, y, z, magnitude), "Z_SCORE"));
+						featureVectorForPlot.add(normalization(new FeatureVector(x, y, z, Math.abs(magnitude) ), "Z_SCORE"));
 
 						// store parsed data into processing List
 						featureVectorList.add(new FeatureVector(x, y, z, magnitude));
@@ -215,8 +215,12 @@ public class MotionRecognition extends Thread {
 								templateFeatureFrameList.get(j).get(i).getAcceleration_z(),
 								templateFeatureFrameList.get(j).get(i).getAcceleration_magnitude()),
 						"Z_SCORE");
-				d_x[j * templateFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_x();
-				d_y[j * templateFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_y();
+//				d_x[j * templateFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_x();
+//				d_y[j * templateFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_y();
+//				d_z[j * templateFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_z();
+//				d_m[j * templateFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_magnitude();
+				d_x[j * templateFeatureFrameList.get(j).size() + i] = (double) Math.abs(fv.getAcceleration_x() - fv.getAcceleration_y());
+				d_y[j * templateFeatureFrameList.get(j).size() + i] = (double) Math.abs(fv.getAcceleration_y() + fv.getAcceleration_x());
 				d_z[j * templateFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_z();
 				d_m[j * templateFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_magnitude();
 
@@ -265,8 +269,12 @@ public class MotionRecognition extends Thread {
 								testingFeatureFrameList.get(j).get(i).getAcceleration_z(),
 								testingFeatureFrameList.get(j).get(i).getAcceleration_magnitude()),
 						"Z_SCORE");
-				d_x[j * testingFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_x();
-				d_y[j * testingFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_y();
+//				d_x[j * testingFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_x();
+//				d_y[j * testingFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_y();
+//				d_z[j * testingFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_z();
+//				d_m[j * testingFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_magnitude();
+				d_x[j * testingFeatureFrameList.get(j).size() + i] = (double) Math.abs(fv.getAcceleration_x() - fv.getAcceleration_y());
+				d_y[j * testingFeatureFrameList.get(j).size() + i] = (double) Math.abs(fv.getAcceleration_y() + fv.getAcceleration_x());
 				d_z[j * testingFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_z();
 				d_m[j * testingFeatureFrameList.get(j).size() + i] = (double) fv.getAcceleration_magnitude();
 
@@ -299,11 +307,16 @@ public class MotionRecognition extends Thread {
 		// -----------------------------------------------------------------
 
 		// ----- calculate distance by fastDTW -----
-		double dist = (FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_x), new TimeSeries(testingInstance_x),
-				30)
+//		double dist = (FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_x), new TimeSeries(testingInstance_x),
+//				30)
+//				+ FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_y), new TimeSeries(testingInstance_y), 30)
+//				+ FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_z), new TimeSeries(testingInstance_z), 30))/3;
+		
+		double dist = (
+				FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_x), new TimeSeries(testingInstance_x), 30) 
 				+ FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_y), new TimeSeries(testingInstance_y), 30)
-				+ FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_z), new TimeSeries(testingInstance_z), 30))/3;
-				//+ FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_m), new TimeSeries(testingInstance_m), 30);
+				+ FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_z), new TimeSeries(testingInstance_z), 30) * 3.5
+				+ FastDTW.getWarpDistBetween(new TimeSeries(templateInstance_m), new TimeSeries(testingInstance_m), 30) * 1);
 
 		if (DEBUG_SIMILARITY) {
 			System.out.printf("Similarity: %d\n", (int) dist);
