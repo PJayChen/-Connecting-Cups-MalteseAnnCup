@@ -54,7 +54,7 @@ public class RealtimeChart {
 		chart = new Chart(500, 400);
 		chart.setChartTitle("Acceleration Chart");
 		chart.setXAxisTitle("Time(ms)");
-		chart.setYAxisTitle("Acceleration Raw Data");
+		chart.setYAxisTitle("Acceleration");
 		chart.addSeries(SERIES_NAME_1, xData, yData);
 		chart.addSeries(SERIES_NAME_2, xData, yData);
 		chart.addSeries(SERIES_NAME_3, xData, yData);
