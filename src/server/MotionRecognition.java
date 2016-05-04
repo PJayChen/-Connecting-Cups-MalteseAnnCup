@@ -407,8 +407,8 @@ public class MotionRecognition extends Thread {
 						}
 						// Determine whether a motion or not
 						if (true == motionDetection(frameFV)) {
-							if (DEBUG_MOTION_DETECTION) {
-								System.out.printf("*****Motion detected! \n");
+							if (DEBUG_MOTION_DETECTION | DEBUG_IDENTIFY_MOTION) {
+								System.out.printf("\n ><><><><><>< Motion detected! ><><><><><><\n");
 							}
 
 							// create a list to store frames which has activity
@@ -506,10 +506,19 @@ public class MotionRecognition extends Thread {
 					PriorityQueue<SimilarTemplate> similarityQueue = new PriorityQueue<SimilarTemplate>();
 
 					// Calculate similarity between testing frames and templates
-					File[] templateFileList = new File(new String("./templates/")).listFiles();
-					for (int i = 0; i < templateFileList.length; i++) {
-						identifyMotion(templateFileList[i].getName(), similarityQueue);
+//					File[] templateFileList = new File(new String("./templates/")).listFiles();
+//					for (int i = 0; i < templateFileList.length; i++) {
+//						identifyMotion(templateFileList[i].getName(), similarityQueue);
+//					}										
+					File[] templateFolderList = new File(new String("./templates/")).listFiles();												
+					for (int k = 0; k < templateFolderList.length; k++) {
+						File[] templateFileList = new File(new String("./templates/"+templateFolderList[k].getName())).listFiles();										
+						for (int i = 0; i < templateFileList.length; i++) {								
+							identifyMotion(templateFolderList[k].getName()+"/"+templateFileList[i].getName(), similarityQueue);
+						}
+						
 					}
+					
 
 					if (DEBUG_IDENTIFY_MOTION) {
 						SimilarTemplate mostSimilarOne = similarityQueue.remove();
@@ -524,14 +533,19 @@ public class MotionRecognition extends Thread {
 						
 						System.out.println("========================");
 						
-						while (!similarityQueue.isEmpty()) {
-							SimilarTemplate st = similarityQueue.remove();
-							System.out.printf("%s\t\t similarity: %d \n", st.getTemplateName(), st.getSimilarity());
-						}
+//						while (!similarityQueue.isEmpty()) {
+//							SimilarTemplate st = similarityQueue.remove();
+//							System.out.printf("%s\t\t similarity: %d \n", st.getTemplateName(), st.getSimilarity());
+//						}
 												
 						System.out.println("========================");												
 
-						System.out.println("Detect: " + motionOfmostSimilarOne[1]);
+						System.out.println("[DTW] Detect: " + motionOfmostSimilarOne[1]);
+						
+						
+						System.out.println("\n----------------------");
+						SVMRecognizer.identifyMotion(motionFramesList);
+						
 					}
 					state = MOTION_DETECTION;
 					break;
