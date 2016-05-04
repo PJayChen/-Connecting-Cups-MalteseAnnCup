@@ -498,6 +498,8 @@ public class MotionRecognition extends Thread {
 					state = MOTION_RECOGNITION;
 					break;
 				case MOTION_RECOGNITION:
+					long time0 = System.currentTimeMillis();
+					
 					if (DEBUG_IDENTIFY_MOTION) {
 						System.out.println("\n========================");
 					}
@@ -543,9 +545,18 @@ public class MotionRecognition extends Thread {
 						System.out.println("[DTW] Detect: " + motionOfmostSimilarOne[1]);
 						
 						
+						long time1 = System.currentTimeMillis();
+						System.out.println( (time1 - time0) +"ms\n");
 						System.out.println("\n----------------------");
-						SVMRecognizer.identifyMotion(motionFramesList);
 						
+						SVMRecognizer.identifyMotionJ(motionFramesList);												
+						long time2 = System.currentTimeMillis();
+						System.out.println( (time2 - time1) +"ms\n");
+						
+						System.out.println("\n----------------------");
+						SVMRecognizer.identifyMotionB(motionFramesList);
+						long time3 = System.currentTimeMillis();
+						System.out.println( (time3 - time2) +"ms\n");
 					}
 					state = MOTION_DETECTION;
 					break;

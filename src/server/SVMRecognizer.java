@@ -1,5 +1,9 @@
 package server;
 
+import libsvm.*;
+import svm.svm_predict;
+import svm.svm_scale;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -125,8 +129,8 @@ public class SVMRecognizer {
 		append = false; // for toLibsvm_format()
 	}
 	
-	
-	static public void identifyMotion(List<List<FeatureVector>> motionFramesList) {
+	// invokes binary execution file to do SVM classification.
+	static public void identifyMotionB(List<List<FeatureVector>> motionFramesList) {
 		String scaling = "./svm-scale -r templates.tf.range testingSet.tf > testingSet.tf.scale";
 		String predict = "./svm-predict testingSet.tf.scale templates.tf.model testingSet.tf.predict";
 		
@@ -149,7 +153,8 @@ public class SVMRecognizer {
 //	        while ((s = stdInput.readLine()) != null) {
 //	            System.out.println(s);
 //	        }
-        
+			
+			// wait for writing testingSet.tf.predict file.
 			try {
 				TimeUnit.MILLISECONDS.sleep(500);
 			} catch (InterruptedException e) {
@@ -159,12 +164,34 @@ public class SVMRecognizer {
 	        BufferedReader input = new BufferedReader(new FileReader("./libsvm/testingSet.tf.predict"));
 	        String line = input.readLine();
 	        System.out.printf("[SVM] Detect: %s\n", motionTypes[Integer.valueOf(line)]);
+	        input.close();
 	        
 		} catch (IOException e) {
 			e.printStackTrace();
+		}		
+	}
+	
+	// invokes Java version SVM classification.
+	static public void identifyMotionJ(List<List<FeatureVector>> motionFramesList) {
+		String[] scaling = {"-r", "./libsvm/templates.tf.range", "-o", "./libsvm/testingSet.tf.scale", "./libsvm/testingSet.tf"};
+		String[] predict = {"-q", "./libsvm/testingSet.tf.scale", "./libsvm/templates.tf.model", "./libsvm/testingSet.tf.predict"};
+		
+		// feature extraction and translate to LIBSVM format.		
+		featureExtraction(motionFramesList);
+		
+		// scale and predict.
+		try {
+			svm_scale.main(scaling);
+			
+			svm_predict.main(predict);
+
+			BufferedReader input = new BufferedReader(new FileReader("./libsvm/testingSet.tf.predict"));
+	        String line = input.readLine();
+	        System.out.printf("[SVM] Detect: %s\n", motionTypes[Integer.valueOf(line.charAt(0)-'0')]);
+	        input.close();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
-		
-		
 		
 		
 	}
